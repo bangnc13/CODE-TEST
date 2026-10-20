@@ -122,7 +122,6 @@ CSS = """<style>
 [data-testid="stExpandSidebarButton"] *,[data-testid="collapsedControl"] *{color:#fff!important;fill:#fff!important}
 [data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapseButton"] button{opacity:1!important;visibility:visible!important}
 [data-testid="stSidebar"]{background:linear-gradient(180deg,#f3faf8,#e2f0ec);border-right:1px solid var(--line)}
-@media(min-width:768px){[data-testid="stSidebar"]{min-width:370px!important;max-width:370px!important}}
 .brand{display:flex;gap:12px;align-items:center;padding:16px;margin-bottom:10px;border-radius:18px;background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;box-shadow:0 8px 20px #0f766e40}
 .brand .logo{font-size:26px;width:46px;height:46px;border-radius:14px;background:#ffffff2b;display:grid;place-items:center}
 .brand .t{font-weight:700;font-size:19px;letter-spacing:-.01em}.brand .s{font-size:12.5px;opacity:.92}

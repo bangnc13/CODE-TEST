@@ -117,7 +117,10 @@ CSS = """<style>
 .block-container{padding:0!important;max-width:100%!important}
 [data-testid="stMain"] iframe,section.main iframe{height:100vh!important;display:block;border:0}
 [data-testid="stHeader"]{background:transparent}
-[data-testid="stToolbar"],[data-testid="stDecoration"],footer{display:none!important}
+[data-testid="stDecoration"],[data-testid="stToolbarActions"],[data-testid="stMainMenu"],[data-testid="stAppDeployButton"],.stAppDeployButton,footer{display:none!important}
+[data-testid="stExpandSidebarButton"],[data-testid="collapsedControl"]{display:flex!important;visibility:visible!important;opacity:1!important;position:fixed!important;top:12px;left:12px;z-index:1000002!important;width:42px;height:42px;align-items:center;justify-content:center;border-radius:14px;background:linear-gradient(135deg,#0f766e,#14b8a6)!important;box-shadow:0 6px 16px #0f766e66}
+[data-testid="stExpandSidebarButton"] *,[data-testid="collapsedControl"] *{color:#fff!important;fill:#fff!important}
+[data-testid="stSidebarCollapseButton"],[data-testid="stSidebarCollapseButton"] button{opacity:1!important;visibility:visible!important}
 [data-testid="stSidebar"]{background:linear-gradient(180deg,#f3faf8,#e2f0ec);border-right:1px solid var(--line)}
 @media(min-width:768px){[data-testid="stSidebar"]{min-width:370px!important;max-width:370px!important}}
 .brand{display:flex;gap:12px;align-items:center;padding:16px;margin-bottom:10px;border-radius:18px;background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;box-shadow:0 8px 20px #0f766e40}

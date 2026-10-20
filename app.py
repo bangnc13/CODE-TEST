@@ -13,7 +13,7 @@ SHEET_ID = "1P7juPjYYReWhr9zQIyCg2PW_aTASA5dq1UG0DvfJUTk"
 GID = "455030063"  # sheet "Tọa độ"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&gid={GID}"
 
-st.set_page_config(page_title="Lộ trình tối ưu xe máy", page_icon="🛵", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="TQG_thu cước", page_icon="🛵", layout="wide", initial_sidebar_state="expanded")
 
 
 # ---------- Đọc dữ liệu ----------
@@ -147,8 +147,8 @@ MAP = components.declare_component("route_map", path=str(Path(__file__).with_nam
 step = lambda n, t: st.markdown(f'<div class="step"><i>{n}</i>{t}</div>', unsafe_allow_html=True)
 
 with st.sidebar:
-    st.markdown(CSS + '<div class="brand"><div class="logo">🛵</div><div><div class="t">Lộ trình xe máy</div>'
-                '<div class="s">Tối ưu theo đường bộ thật</div></div></div>', unsafe_allow_html=True)
+    st.markdown(CSS + '<div class="brand"><div class="logo">🛵</div><div><div class="t">Tuyến đường</div>'
+                '<div class="s">Make by BangNC13</div></div></div>', unsafe_allow_html=True)
     try:
         ROWS = load_sheet()
     except Exception:
@@ -156,9 +156,9 @@ with st.sidebar:
         st.stop()
     BYNAME = {v[0]: v for v in ROWS.values()}
     total = f"{len(BYNAME):,}".replace(",", ".")
-    st.markdown(f'<span class="pill ok">{total} đối tượng có tọa độ</span>', unsafe_allow_html=True)
+    st.markdown(f'<span class="pill ok">{total} </span>', unsafe_allow_html=True)
 
-    step(1, "Đối tượng cần đi")
+    step(1, "Chọn điểm đến")
     up = st.file_uploader("Import Excel/CSV (cột “Tên đối tượng”)", type=["xlsx", "xls", "csv"])
     tpl = Path(__file__).with_name("Template.xlsx")
     if tpl.exists():

@@ -10,7 +10,6 @@ import polyline
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
-from streamlit_geolocation import streamlit_geolocation
 
 SHEET_ID = "1P7juPjYYReWhr9zQIyCg2PW_aTASA5dq1UG0DvfJUTk"
 GID = "455030063"  # sheet "Tọa độ"
@@ -116,11 +115,32 @@ except Exception:
 
 # ---------- Giao diện ----------
 CSS = """<style>
+:root{--ac:#0f766e;--ink:#0f2a26;--mut:#5b6f6a;--line:#cfe3de}
 .block-container{padding:0!important;max-width:100%!important}
 [data-testid="stMain"] iframe,section.main iframe{height:100vh!important;display:block;border:0}
 [data-testid="stHeader"]{background:transparent}
-footer{visibility:hidden}
-[data-testid="stSidebar"] [data-baseweb="select"]>div{max-height:150px;overflow-y:auto}
+[data-testid="stToolbar"],[data-testid="stDecoration"],footer{display:none!important}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#f3faf8,#e2f0ec);border-right:1px solid var(--line)}
+@media(min-width:768px){[data-testid="stSidebar"]{min-width:370px!important;max-width:370px!important}}
+.brand{display:flex;gap:12px;align-items:center;padding:16px;margin-bottom:10px;border-radius:18px;background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;box-shadow:0 8px 20px #0f766e40}
+.brand .logo{font-size:26px;width:46px;height:46px;border-radius:14px;background:#ffffff2b;display:grid;place-items:center}
+.brand .t{font-weight:700;font-size:19px;letter-spacing:-.01em}.brand .s{font-size:12.5px;opacity:.92}
+.step{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--ink);margin:20px 0 8px}
+.step i{font-style:normal;width:24px;height:24px;border-radius:50%;background:var(--ac);color:#fff;display:grid;place-items:center;font-size:12px}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;background:#fff;border:1px solid var(--line);color:var(--mut);font-size:12px}
+.pill.ok{background:#d9f4ee;border-color:#a8e0d4;color:#0b5c55}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 8px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 4px;text-align:center}
+.stat b{display:block;font-size:22px;line-height:1.1;color:var(--ac)}.stat span{font-size:11.5px;color:var(--mut)}
+[data-testid="stSidebar"] button,[data-testid^="stBaseLinkButton"]{border-radius:12px!important;font-weight:600}
+[data-testid="stSidebar"] button[kind="primary"],[data-testid="stBaseButton-primary"]{background:linear-gradient(135deg,#0f766e,#14b8a6)!important;border:0!important;color:#fff!important;padding:.65rem 1rem;box-shadow:0 8px 18px #0f766e40}
+[data-testid^="stBaseLinkButton"]{border:1.5px solid var(--ac)!important;background:#fff!important}
+[data-testid^="stBaseLinkButton"] *{color:var(--ac)!important}
+[data-testid^="stBaseLinkButton"]:hover{background:var(--ac)!important}
+[data-testid^="stBaseLinkButton"]:hover *{color:#fff!important}
+[data-testid="stFileUploaderDropzone"]{border:1.5px dashed var(--ac);background:#fff;border-radius:14px}
+[data-testid="stSidebar"] input{border-radius:12px}
+[data-testid="stSidebar"] [data-baseweb="select"]>div{border-radius:12px;max-height:150px;overflow-y:auto}
 </style>"""
 
 MAP_HTML = """<!doctype html><html><head><meta charset="utf-8">
@@ -147,22 +167,26 @@ D.pts.forEach(p=>{all.push([p.lat,p.lng]);
 all.length>1?map.fitBounds(all,{padding:[60,60]}):all.length?map.setView(all[0],15):map.setView([16,107.5],6);
 </script></body></html>"""
 
+GEO = components.declare_component("geo_btn", path=str(Path(__file__).with_name("geo")))
+step = lambda n, t: st.markdown(f'<div class="step"><i>{n}</i>{t}</div>', unsafe_allow_html=True)
+
 with st.sidebar:
-    st.markdown(CSS, unsafe_allow_html=True)
-    st.markdown("### 🛵 Lộ trình tối ưu xe máy")
+    st.markdown(CSS + '<div class="brand"><div class="logo">🛵</div><div><div class="t">Lộ trình xe máy</div>'
+                '<div class="s">Tối ưu theo đường bộ thật</div></div></div>', unsafe_allow_html=True)
     try:
         ROWS = load_sheet()
     except Exception:
         st.error("Không đọc được Google Sheet. Hãy chia sẻ file ở chế độ “Bất kỳ ai có đường liên kết đều xem được”.")
         st.stop()
     BYNAME = {v[0]: v for v in ROWS.values()}
-    st.caption(f"{len(BYNAME):,} đối tượng có tọa độ (sheet “Tọa độ”)")
+    total = f"{len(BYNAME):,}".replace(",", ".")
+    st.markdown(f'<span class="pill ok">{total} đối tượng có tọa độ</span>', unsafe_allow_html=True)
 
-    st.markdown("**1. Đối tượng cần đi**")
-    up = st.file_uploader("Import danh sách (Excel/CSV, cột “Tên đối tượng”)", type=["xlsx", "xls", "csv"])
+    step(1, "Đối tượng cần đi")
+    up = st.file_uploader("Import Excel/CSV (cột “Tên đối tượng”)", type=["xlsx", "xls", "csv"])
     tpl = Path(__file__).with_name("Template.xlsx")
     if tpl.exists():
-        st.download_button("Tải file mẫu", tpl.read_bytes(), "Template.xlsx", use_container_width=True)
+        st.download_button("⬇ Tải file mẫu", tpl.read_bytes(), "Template.xlsx", use_container_width=True)
     if up and st.session_state.get("tok") != (up.name, up.size):
         st.session_state.tok = (up.name, up.size)
         d = pd.read_csv(up, dtype=str) if up.name.lower().endswith(".csv") else pd.read_excel(up, dtype=str)
@@ -174,15 +198,20 @@ with st.sidebar:
         st.warning("Không có trong sheet Tọa độ: " + ", ".join(st.session_state.miss[:30]))
     st.multiselect("Chọn từ danh sách", list(BYNAME), key="sel", placeholder="Gõ để tìm tên đối tượng")
     picked = [BYNAME[n] for n in st.session_state.get("sel", []) if n in BYNAME]
+    st.markdown(f'<span class="pill">Đã chọn {len(picked)} điểm</span>', unsafe_allow_html=True)
 
-    st.markdown("**2. Điểm xuất phát**")
-    loc = streamlit_geolocation()
-    start = (loc["latitude"], loc["longitude"]) if loc and loc.get("latitude") else None
-    man = st.text_input("Hoặc nhập tọa độ", placeholder="14.0123, 108.7654")
+    step(2, "Điểm xuất phát")
+    g = GEO(key="geo", default=None)
+    start, src = ((g["lat"], g["lon"]), "gps") if g else (None, None)
+    man = st.text_input("Hoặc nhập tọa độ (lat, lon)", placeholder="14.0123, 108.7654")
     if man and coord([man]):
-        start = coord([man])
-    st.caption(f"Xuất phát: {start[0]:.5f}, {start[1]:.5f}" if start else "Bấm nút định vị để dùng vị trí điện thoại. Nếu bỏ trống, Google Maps sẽ đi từ vị trí hiện tại của máy.")
+        start, src = coord([man]), "man"
+    if start:
+        st.markdown(f'<span class="pill ok">{"📍 Vị trí hiện tại" if src == "gps" else "✍️ Nhập tay"}: {start[0]:.5f}, {start[1]:.5f}</span>', unsafe_allow_html=True)
+    else:
+        st.markdown('<span class="pill">Chưa có vị trí · Google Maps sẽ đi từ vị trí hiện tại của máy</span>', unsafe_allow_html=True)
 
+    step(3, "Lộ trình")
     if st.button("Tính lộ trình tối ưu", type="primary", use_container_width=True):
         fb = start is None
         P = ([] if fb else [start]) + [(c[1], c[2]) for c in picked]
@@ -194,12 +223,12 @@ with st.sidebar:
             with st.spinner("Đang tính lộ trình theo đường bộ…"):
                 if GKEY and len(P) <= 27:
                     try:
-                        res, used = google(P, GKEY), "Google Routes API (xe máy)"
+                        res, used = google(P, GKEY), "Google Routes API · xe máy"
                     except Exception as e:
                         st.warning(f"Google Routes lỗi, chuyển sang OSRM: {e}")
                 if res is None:
                     try:
-                        res, used = osrm(P), "OSRM (đường ô tô, miễn phí)"
+                        res, used = osrm(P), "OSRM · đường ô tô"
                     except Exception as e:
                         st.error(f"Không tính được lộ trình: {e}")
                         st.stop()
@@ -208,11 +237,12 @@ with st.sidebar:
     R = st.session_state.get("res")
     if R:
         P, N, fb, order, line, legs = (R[k] for k in ("P", "N", "fb", "order", "line", "legs"))
-        st.divider()
-        c1, c2 = st.columns(2)
-        c1.metric("Quãng đường", f"{sum(l[0] for l in legs):.1f} km")
-        c2.metric("Thời gian", f"{sum(l[1] for l in legs):.0f} phút")
-        st.caption(f"{len(order) - (0 if fb else 1)} điểm dừng · {R['used']}")
+        n_stop = len(order) - (0 if fb else 1)
+        st.markdown(
+            f'<div class="stats"><div class="stat"><b>{sum(l[0] for l in legs):.1f}</b><span>km</span></div>'
+            f'<div class="stat"><b>{sum(l[1] for l in legs):.0f}</b><span>phút</span></div>'
+            f'<div class="stat"><b>{n_stop}</b><span>điểm dừng</span></div></div>'
+            f'<span class="pill ok">{R["used"]}</span>', unsafe_allow_html=True)
         # Mở Google Maps chế độ xe máy (mỗi liên kết tối đa 10 điểm dừng)
         stops, o = [P[i] for i in order[0 if fb else 1:]], (None if fb else P[0])
         for i in range(0, len(stops), 10):
@@ -221,7 +251,7 @@ with st.sidebar:
             url = ("https://www.google.com/maps/dir/?api=1&travelmode=two-wheeler"
                    + (f"&origin={o[0]},{o[1]}" if o else "") + f"&destination={d[0]},{d[1]}"
                    + ("&waypoints=" + quote("|".join(f"{a},{b}" for a, b in w)) if w else ""))
-            st.link_button(f"Mở Google Maps (xe máy){f' · điểm {i + 1}–{i + len(ch)}' if len(stops) > 10 else ''}", url, use_container_width=True)
+            st.link_button(f"🗺 Mở Google Maps{f' · điểm {i + 1}–{i + len(ch)}' if len(stops) > 10 else ''}", url, use_container_width=True)
             o = d
 
 # ---------- Bản đồ toàn màn hình ----------

@@ -176,17 +176,11 @@ with st.sidebar:
     picked = [BYNAME[n] for n in st.session_state.get("sel", []) if n in BYNAME]
     st.markdown(f'<span class="pill">Đã chọn {len(picked)} điểm</span>', unsafe_allow_html=True)
 
-    step(2, "Điểm xuất phát")
+    # Vị trí hiện tại (realtime từ bản đồ) dùng làm điểm xuất phát, không hiển thị trên menu
     loc = st.session_state.get("map")
     start = (loc["lat"], loc["lon"]) if isinstance(loc, dict) and "lat" in loc else None
-    if start:
-        st.markdown(f'<span class="pill ok">📍 Vị trí hiện tại: {start[0]:.5f}, {start[1]:.5f}</span>', unsafe_allow_html=True)
-        st.caption("Vị trí và hướng cập nhật theo thời gian thực trên bản đồ.")
-    else:
-        st.markdown('<span class="pill">Đang chờ định vị · hãy cho phép truy cập vị trí</span>', unsafe_allow_html=True)
-        st.caption("Chưa có vị trí: Google Maps sẽ đi từ vị trí hiện tại của máy.")
 
-    step(3, "Lộ trình")
+    step(2, "Lộ trình")
     if st.button("Tính lộ trình tối ưu", type="primary", use_container_width=True):
         fb = start is None
         P = ([] if fb else [start]) + [(c[1], c[2]) for c in picked]

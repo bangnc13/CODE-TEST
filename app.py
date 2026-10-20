@@ -3,8 +3,6 @@ import math, re, unicodedata
 from pathlib import Path
 from urllib.parse import quote
 
-import json
-
 import pandas as pd
 import polyline
 import requests
@@ -143,31 +141,7 @@ CSS = """<style>
 [data-testid="stSidebar"] [data-baseweb="select"]>div{border-radius:12px;max-height:150px;overflow-y:auto}
 </style>"""
 
-MAP_HTML = """<!doctype html><html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<style>html,body,#m{height:100%;margin:0}.leaflet-top{margin-top:48px}
-.pin{width:26px;height:26px;border-radius:50%;background:#0f766e;color:#fff;border:2px solid #fff;display:grid;place-items:center;font:700 12px sans-serif;box-shadow:0 1px 4px #0006}
-.pin.s{background:#c2410c}</style></head><body><div id="m"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script>
-const D=__DATA__,map=L.map('m'),T=(u,o)=>L.tileLayer(u,{maxZoom:19,...o});
-const esri='https://server.arcgisonline.com/ArcGIS/rest/services/';
-const b={'Bản đồ đường':T(esri+'World_Street_Map/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles © Esri'}),
- 'Vệ tinh':T(esri+'World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles © Esri'}),
- 'OpenStreetMap':T('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',referrerPolicy:'origin'})};
-const a=b['Bản đồ đường'].addTo(map);L.control.layers(b).addTo(map);
-let n=0;a.on('tileerror',()=>{if(++n==4){map.removeLayer(a);b['OpenStreetMap'].addTo(map)}});
-const es=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const all=D.line.slice();
-if(D.line.length)L.polyline(D.line,{color:'#0f766e',weight:5,opacity:.9}).addTo(map);
-D.pts.forEach(p=>{all.push([p.lat,p.lng]);
- (p.l===''?L.circleMarker([p.lat,p.lng],{radius:6,color:'#fff',weight:2,fillColor:'#0f766e',fillOpacity:1})
- :L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',iconSize:[26,26],html:'<div class="pin'+(p.s?' s':'')+'">'+es(p.l)+'</div>'})})).bindTooltip(es(p.n)).addTo(map)});
-all.length>1?map.fitBounds(all,{padding:[60,60]}):all.length?map.setView(all[0],15):map.setView([16,107.5],6);
-</script></body></html>"""
-
-GEO = components.declare_component("geo_btn", path=str(Path(__file__).with_name("geo")))
+MAP = components.declare_component("route_map", path=str(Path(__file__).with_name("route_map")))
 step = lambda n, t: st.markdown(f'<div class="step"><i>{n}</i>{t}</div>', unsafe_allow_html=True)
 
 with st.sidebar:
@@ -201,15 +175,14 @@ with st.sidebar:
     st.markdown(f'<span class="pill">Đã chọn {len(picked)} điểm</span>', unsafe_allow_html=True)
 
     step(2, "Điểm xuất phát")
-    g = GEO(key="geo", default=None)
-    start, src = ((g["lat"], g["lon"]), "gps") if g else (None, None)
-    man = st.text_input("Hoặc nhập tọa độ (lat, lon)", placeholder="14.0123, 108.7654")
-    if man and coord([man]):
-        start, src = coord([man]), "man"
+    loc = st.session_state.get("map")
+    start = (loc["lat"], loc["lon"]) if isinstance(loc, dict) and "lat" in loc else None
     if start:
-        st.markdown(f'<span class="pill ok">{"📍 Vị trí hiện tại" if src == "gps" else "✍️ Nhập tay"}: {start[0]:.5f}, {start[1]:.5f}</span>', unsafe_allow_html=True)
+        st.markdown(f'<span class="pill ok">📍 Vị trí hiện tại: {start[0]:.5f}, {start[1]:.5f}</span>', unsafe_allow_html=True)
+        st.caption("Vị trí và hướng cập nhật theo thời gian thực trên bản đồ.")
     else:
-        st.markdown('<span class="pill">Chưa có vị trí · Google Maps sẽ đi từ vị trí hiện tại của máy</span>', unsafe_allow_html=True)
+        st.markdown('<span class="pill">Đang chờ định vị · hãy cho phép truy cập vị trí</span>', unsafe_allow_html=True)
+        st.caption("Chưa có vị trí: Google Maps sẽ đi từ vị trí hiện tại của máy.")
 
     step(3, "Lộ trình")
     if st.button("Tính lộ trình tối ưu", type="primary", use_container_width=True):
@@ -217,7 +190,7 @@ with st.sidebar:
         P = ([] if fb else [start]) + [(c[1], c[2]) for c in picked]
         N = ([] if fb else ["Vị trí xuất phát"]) + [c[0] for c in picked]
         if len(P) < 2:
-            st.warning("Hãy chọn thêm đối tượng (hoặc bật định vị / nhập tọa độ xuất phát).")
+            st.warning("Hãy chọn thêm đối tượng (hoặc bật định vị).")
         else:
             res = None
             with st.spinner("Đang tính lộ trình theo đường bộ…"):
@@ -254,15 +227,13 @@ with st.sidebar:
             st.link_button(f"🗺 Mở Google Maps{f' · điểm {i + 1}–{i + len(ch)}' if len(stops) > 10 else ''}", url, use_container_width=True)
             o = d
 
-# ---------- Bản đồ toàn màn hình ----------
+# ---------- Bản đồ vệ tinh toàn màn hình ----------
 if R:
-    off = 0 if not R["fb"] else 1
-    pts = [dict(lat=R["P"][i][0], lng=R["P"][i][1], n=R["N"][i], l="●" if (k == 0 and not R["fb"]) else str(k + off), s=(k == 0 and not R["fb"]))
-           for k, i in enumerate(R["order"])]
+    off = 1 if R["fb"] else 0
+    pts = [dict(lat=R["P"][i][0], lng=R["P"][i][1], n=R["N"][i], l=str(k + off))
+           for k, i in enumerate(R["order"]) if R["fb"] or k > 0]
     path = [list(p) for p in R["line"]]
 else:  # chưa tính: hiện các điểm đã chọn
-    pts = [dict(lat=c[1], lng=c[2], n=c[0], l="", s=False) for c in picked]
-    if start:
-        pts.append(dict(lat=start[0], lng=start[1], n="Vị trí xuất phát", l="●", s=True))
+    pts = [dict(lat=c[1], lng=c[2], n=c[0], l="") for c in picked]
     path = []
-components.html(MAP_HTML.replace("__DATA__", json.dumps({"pts": pts, "line": path}).replace("</", "<\\/")), height=700)
+MAP(pts=pts, line=path, key="map", default=None)
